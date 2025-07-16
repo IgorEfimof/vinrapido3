@@ -297,255 +297,274 @@
             <div class="keyboard-key">7</div>
             <div class="keyboard-key">8</div>
             <div class="keyboard-key">9</div>
-            <div class="keyboard-key wide red" id="keyDel">DEL</div>
+            <div class="keyboard-key wide red" id="keyDelete">⌫</div>
         </div>
         <div class="keyboard-row">
-            <div class="keyboard-key wide blue" id="keyDone">ГОТОВО</div>
+            <div class="keyboard-key">0</div>
+            <div class="keyboard-key">,</div> <!-- Добавлена запятая -->
+            <div class="keyboard-key">|</div> <!-- Добавлена вертикальная черта -->
+            <div class="keyboard-key wide blue" id="keyDone">Готово</div>
         </div>
     </div>
 
 <script>
-    // === Тема ===
+    // --- Тема ---
     const themeToggle = document.getElementById('themeToggle');
-    const body = document.body;
-    function loadTheme() {
-        const theme = localStorage.getItem('theme');
-        if(theme === 'dark') {
-            body.classList.add('dark-mode');
+    function applyTheme(dark) {
+        if(dark) {
+            document.documentElement.classList.add('dark-mode');
+            localStorage.setItem('darkMode', 'true');
         } else {
-            body.classList.remove('dark-mode');
+            document.documentElement.classList.remove('dark-mode');
+            localStorage.setItem('darkMode', 'false');
         }
     }
-    themeToggle.addEventListener('click', () => {
-        body.classList.toggle('dark-mode');
-        if(body.classList.contains('dark-mode')) {
-            localStorage.setItem('theme', 'dark');
-        } else {
-            localStorage.setItem('theme', 'light');
-        }
-    });
-    loadTheme();
+    themeToggle.onclick = () => {
+        const dark = document.documentElement.classList.contains('dark-mode');
+        applyTheme(!dark);
+    };
+    // Инициализация темы по сохранённому значению
+    applyTheme(localStorage.getItem('darkMode') === 'true');
 
-    // === Переменные ===
-    let history = JSON.parse(localStorage.getItem('history')) || [];
+    // --- История ---
+    let history = JSON.parse(localStorage.getItem('rapido2History') || '[]');
+    
+    // --- Отображение истории ---
     const historyList = document.getElementById('historyList');
-    const field1 = document.getElementById('field1');
-    const field2 = document.getElementById('field2');
-    const statsTable = document.getElementById('statsTable');
-    const inputDisplay = document.getElementById('inputDisplay');
-    const fakeInput = document.getElementById('fakeInput');
-    const customKeyboard = document.getElementById('customKeyboard');
-    let currentInputValue = '';
-
-    // === Отобразить историю ===
     function renderHistory() {
         historyList.innerHTML = '';
-        if(history.length === 0) {
-            historyList.innerHTML = '<p style="font-size:14px; color:gray; text-align:center;">История пуста</p>';
-            return;
-        }
-        history.forEach((item, idx) => {
+        history.forEach((entry, idx) => {
             const div = document.createElement('div');
-            div.classList.add('history-item');
+            div.className = 'history-item';
             div.innerHTML = `
-                <div>
-                    <strong>${item.date}</strong>:
-                    <span>${item.field1.join(', ')}</span> | <span class="number small">${item.field2}</span>
-                </div>
-                <button onclick="deleteHistoryItem(${idx})">✕</button>
+                <span>${entry}</span>
+                <button data-idx="${idx}">X</button>
             `;
             historyList.appendChild(div);
         });
     }
     renderHistory();
-
-    // === Удалить элемент истории ===
-    function deleteHistoryItem(index) {
-        history.splice(index, 1);
-        saveHistory();
-        renderHistory();
-        updateStats();
-    }
-
-    // === Сохранить историю ===
-    function saveHistory() {
-        localStorage.setItem('history', JSON.stringify(history));
-    }
-
-    // === Добавить историю из ввода ===
-    document.getElementById('addHistoryBtn').addEventListener('click', () => {
-        const input = currentInputValue.trim();
-        if(!input) {
-            alert('Введите числа в формате: 1,2,3,4,5,6,7,8 | 1');
-            return;
+    
+    // Удаление записи
+    historyList.addEventListener('click', e => {
+        if(e.target.tagName === 'BUTTON') {
+            const idx = +e.target.dataset.idx;
+            history.splice(idx, 1);
+            saveHistory();
+            renderHistory();
+            updateStats();
         }
-        const parts = input.split('|');
-        if(parts.length !== 2) {
-            alert('Неверный формат. Должно быть: 8 чисел | 1 число');
-            return;
-        }
-        const f1 = parts[0].split(',').map(x => Number(x.trim())).filter(x => !isNaN(x));
-        const f2 = Number(parts[1].trim());
-        if(f1.length !== 8 || f1.some(n => n < 1 || n > 20) || f2 < 1 || f2 > 4) {
-            alert('Проверьте правильность чисел: поле 1 (8 чисел от 1 до 20), поле 2 (1 число от 1 до 4)');
-            return;
-        }
-        history.unshift({
-            field1: f1.sort((a,b)=>a-b),
-            field2: f2,
-            date: new Date().toLocaleString()
-        });
-        saveHistory();
-        renderHistory();
-        updateStats();
-        currentInputValue = '';
-        inputDisplay.textContent = 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
     });
-
-    // === Очистить историю ===
-    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+    
+    // Очистка истории
+    document.getElementById('clearHistoryBtn').onclick = () => {
         if(confirm('Очистить всю историю?')) {
             history = [];
             saveHistory();
             renderHistory();
             updateStats();
         }
-    });
+    };
 
-    // === Обновить статистику ===
-    document.getElementById('refreshStatsBtn').addEventListener('click', updateStats);
-
-    // === Подсчет статистики ===
-    function updateStats() {
-        const countNumbers = {};
-        history.forEach(item => {
-            item.field1.forEach(num => {
-                countNumbers[num] = (countNumbers[num] || 0) + 1;
-            });
-            // Можно добавить поле 2 для статистики при необходимости
-        });
-        // Создаем массив для таблицы
-        const rows = [];
-        for(let i = 1; i <= 20; i++) {
-            rows.push({
-                number: i,
-                count: countNumbers[i] || 0
-            });
-        }
-        rows.sort((a,b) => b.count - a.count);
-
-        // Определяем горячие и холодные
-        const maxCount = rows[0].count;
-        const minCount = rows[rows.length-1].count;
-
-        let html = `<tr><th>Число</th><th>Выпадений</th></tr>`;
-        rows.forEach(row => {
-            let className = '';
-            if(row.count === maxCount && maxCount > 0) className = 'hot';
-            if(row.count === minCount && minCount < maxCount) className = 'cold';
-            html += `<tr><td>${row.number}</td><td class="${className}">${row.count}</td></tr>`;
-        });
-        statsTable.innerHTML = html;
-    }
-    updateStats();
-
-    // === Генерация чисел ===
-    function getWeightedNumbers(numberStats, count, maxNum) {
-        const allNumbers = Array.from({length: maxNum}, (_, i) => i + 1);
-        if (Object.keys(numberStats).length === 0) {
-            if (count === 1) return Math.floor(Math.random() * maxNum) + 1;
-            const result = [];
-            while (result.length < count) {
-                const num = Math.floor(Math.random() * maxNum) + 1;
-                if (!result.includes(num)) result.push(num);
-            }
-            return result.sort((a, b) => a - b);
-        }
-        const weightedPool = [];
-        allNumbers.forEach(num => {
-            const countValue = numberStats[num] || 0;
-            const weight = countValue + 1; // +1 для шанса у редких
-            for (let i = 0; i < weight; i++) {
-                weightedPool.push(num);
-            }
-        });
-        const result = new Set();
-        while (result.size < count) {
-            const randIndex = Math.floor(Math.random() * weightedPool.length);
-            result.add(weightedPool[randIndex]);
-        }
-        const finalResult = Array.from(result).sort((a, b) => a - b);
-        return count === 1 ? finalResult[0] : finalResult;
+    function saveHistory() {
+        localStorage.setItem('rapido2History', JSON.stringify(history));
     }
 
-    // === Умная генерация ===
-    document.getElementById('smartGenBtn').addEventListener('click', () => {
-        const numberStats = {};
-        history.forEach(item => {
-            item.field1.forEach(num => {
-                numberStats[num] = (numberStats[num] || 0) + 1;
-            });
-        });
-        const f1 = getWeightedNumbers(numberStats, 8, 20);
-        // Для поля 2 просто случайное число от 1 до 4 (можно улучшить)
-        const f2 = getWeightedNumbers({}, 1, 4);
+    // --- Ввод ---
+    const inputDisplay = document.getElementById('inputDisplay');
+    const fakeInput = document.getElementById('fakeInput');
+    const customKeyboard = document.getElementById('customKeyboard');
 
-        displayNumbers(f1, f2);
-    });
-
-    // === Случайная генерация ===
-    document.getElementById('randomGenBtn').addEventListener('click', () => {
-        const f1 = [];
-        while(f1.length < 8) {
-            const num = Math.floor(Math.random() * 20) + 1;
-            if(!f1.includes(num)) f1.push(num);
-        }
-        f1.sort((a,b) => a - b);
-        const f2 = Math.floor(Math.random() * 4) + 1;
-        displayNumbers(f1, f2);
-    });
-
-    // === Отобразить сгенерированные числа ===
-    function displayNumbers(f1, f2) {
-        field1.innerHTML = '';
-        f1.forEach(num => {
-            const span = document.createElement('span');
-            span.classList.add('number');
-            span.textContent = num;
-            field1.appendChild(span);
-        });
-        field2.innerHTML = '';
-        const span2 = document.createElement('span');
-        span2.classList.add('number', 'small');
-        span2.textContent = f2;
-        field2.appendChild(span2);
-    }
-
-    // === Виртуальная клавиатура ===
     function showKeyboard() {
         customKeyboard.style.display = 'flex';
-        fakeInput.focus();
     }
     function hideKeyboard() {
         customKeyboard.style.display = 'none';
     }
 
-    customKeyboard.addEventListener('click', (e) => {
+    // Отобразить введённый текст
+    function updateInputDisplay() {
+        inputDisplay.textContent = fakeInput.value || 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
+    }
+
+    // Клавиши виртуальной клавиатуры
+    customKeyboard.addEventListener('click', e => {
         if(!e.target.classList.contains('keyboard-key')) return;
         const key = e.target.textContent;
-        if(key === 'DEL') {
-            currentInputValue = currentInputValue.slice(0, -1);
-        } else if(key === 'ГОТОВО') {
-            inputDisplay.textContent = currentInputValue || 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
+        if(key === 'Готово') {
             hideKeyboard();
             return;
-        } else {
-            currentInputValue += key;
         }
-        inputDisplay.textContent = currentInputValue || 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
+        if(key === '⌫') {
+            fakeInput.value = fakeInput.value.slice(0, -1);
+            updateInputDisplay();
+            return;
+        }
+        // Разрешаем цифры, запятую и вертикальную черту
+        if(/[0-9,|]/.test(key)) {
+            fakeInput.value += key;
+            updateInputDisplay();
+        }
     });
 
-    inputDisplay.addEventListener('click', showKeyboard);
+    inputDisplay.onclick = showKeyboard;
+
+    // --- Добавление в историю ---
+    document.getElementById('addHistoryBtn').onclick = () => {
+        const val = fakeInput.value.trim();
+        if(!val) {
+            alert('Введите числа в формате: 1,2,3,4,5,6,7,8 | 1');
+            return;
+        }
+        // Валидация формата
+        if(!/^(\d{1,2},){7}\d{1,2} \| \d{1,2}$/.test(val)) {
+            alert('Неверный формат. Пример: 1,2,3,4,5,6,7,8 | 1');
+            return;
+        }
+        history.push(val);
+        saveHistory();
+        renderHistory();
+        updateStats();
+        fakeInput.value = '';
+        updateInputDisplay();
+    };
+
+    // --- Статистика ---
+    const statsTable = document.getElementById('statsTable');
+
+    function updateStats() {
+        // Считаем частоты для обоих полей
+        const countField1 = Array(20).fill(0);
+        const countField2 = Array(4).fill(0);
+
+        history.forEach(entry => {
+            const parts = entry.split(' | ');
+            if(parts.length !== 2) return;
+            const nums1 = parts[0].split(',').map(n => parseInt(n));
+            const nums2 = parseInt(parts[1]);
+
+            nums1.forEach(n => {
+                if(n >= 1 && n <= 20) countField1[n - 1]++;
+            });
+            if(nums2 >= 1 && nums2 <= 4) countField2[nums2 - 1]++;
+        });
+
+        let html = '<tr><th>Число (8 из 20)</th><th>Частота</th><th>Число (1 из 4)</th><th>Частота</th></tr>';
+
+        for(let i = 0; i < 20; i++) {
+            const hotColdClass1 = countField1[i] > 0 ? 'hot' : 'cold';
+            const hotColdClass2 = (i < 4 && countField2[i] > 0) ? 'hot' : 'cold';
+            html += `<tr>
+                <td>${i + 1}</td>
+                <td class="${hotColdClass1}">${countField1[i]}</td>
+                <td>${i < 4 ? i + 1 : ''}</td>
+                <td>${i < 4 ? countField2[i] : ''}</td>
+            </tr>`;
+        }
+        statsTable.innerHTML = html;
+    }
+    updateStats();
+
+    // --- Генерация умных чисел ---
+
+    function generateSmartNumbers() {
+        // Получаем статистику для первого и второго поля
+        const countField1 = Array(20).fill(0);
+        const countField2 = Array(4).fill(0);
+
+        history.forEach(entry => {
+            const parts = entry.split(' | ');
+            if(parts.length !== 2) return;
+            const nums1 = parts[0].split(',').map(n => parseInt(n));
+            const nums2 = parseInt(parts[1]);
+
+            nums1.forEach(n => {
+                if(n >= 1 && n <= 20) countField1[n - 1]++;
+            });
+            if(nums2 >= 1 && nums2 <= 4) countField2[nums2 - 1]++;
+        });
+
+        // Выбираем 8 чисел из 20 по весам (более часто встречающиеся — выше шанс)
+        let pool1 = [];
+        for(let i = 0; i < 20; i++) {
+            // Добавляем число в пул столько раз, сколько его частота + 1, чтобы не исключать полностью
+            const weight = countField1[i] + 1;
+            for(let j=0; j < weight; j++) {
+                pool1.push(i+1);
+            }
+        }
+
+        let selected1 = [];
+        while(selected1.length < 8 && pool1.length > 0) {
+            const idx = Math.floor(Math.random() * pool1.length);
+            const num = pool1[idx];
+            if(!selected1.includes(num)) selected1.push(num);
+            // Удалим все вхождения выбранного числа, чтобы не выбрать его снова
+            pool1 = pool1.filter(n => n !== num);
+        }
+        selected1.sort((a,b) => a-b);
+
+        // Выбираем 1 число из 4 аналогично
+        let pool2 = [];
+        for(let i = 0; i < 4; i++) {
+            const weight = countField2[i] + 1;
+            for(let j=0; j < weight; j++) {
+                pool2.push(i+1);
+            }
+        }
+        let selected2 = pool2.length > 0 ? pool2[Math.floor(Math.random() * pool2.length)] : Math.floor(Math.random() * 4) + 1;
+
+        // Отобразим
+        const field1 = document.getElementById('field1');
+        const field2 = document.getElementById('field2');
+        field1.innerHTML = '';
+        field2.innerHTML = '';
+
+        selected1.forEach(n => {
+            const div = document.createElement('div');
+            div.className = 'number';
+            div.textContent = n;
+            field1.appendChild(div);
+        });
+        const div2 = document.createElement('div');
+        div2.className = 'number small';
+        div2.textContent = selected2;
+        field2.appendChild(div2);
+    }
+
+    document.getElementById('smartGenBtn').onclick = generateSmartNumbers;
+
+    // --- Генерация случайных чисел ---
+    document.getElementById('randomGenBtn').onclick = () => {
+        const nums1 = [];
+        while(nums1.length < 8) {
+            const n = Math.floor(Math.random() * 20) + 1;
+            if(!nums1.includes(n)) nums1.push(n);
+        }
+        nums1.sort((a,b) => a-b);
+        const n2 = Math.floor(Math.random() * 4) + 1;
+
+        const field1 = document.getElementById('field1');
+        const field2 = document.getElementById('field2');
+        field1.innerHTML = '';
+        field2.innerHTML = '';
+
+        nums1.forEach(n => {
+            const div = document.createElement('div');
+            div.className = 'number';
+            div.textContent = n;
+            field1.appendChild(div);
+        });
+        const div2 = document.createElement('div');
+        div2.className = 'number small';
+        div2.textContent = n2;
+        field2.appendChild(div2);
+    };
+
+    // --- Обновить статистику по кнопке ---
+    document.getElementById('refreshStatsBtn').onclick = updateStats;
+
 </script>
 </body>
 </html>
+
