@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Умный генератор Рапидо 2</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --text-color: #1c1c1e;
+            --card-bg: white;
+            --border-color: #ddd;
+            --primary-color: #0066cc;
+            --secondary-color: #ff2d55;
+            --keyboard-bg: #e5e5ea;
+            --button-active: #004499;
+            --history-border: #eee;
+        }
+
+        .dark-mode {
+            --bg-color: #1c1c1e;
+            --text-color: #f5f5f7;
+            --card-bg: #2c2c2e;
+            --border-color: #444;
+            --primary-color: #0a84ff;
+            --secondary-color: #ff375f;
+            --keyboard-bg: #3a3a3c;
+            --button-active: #0061c8;
+            --history-border: #444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 10px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            max-width: 100%;
+            margin: 0 auto;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .container {
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            padding-bottom: 220px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+        h3 {
+            color: var(--primary-color);
+            font-size: 1rem;
+            margin: 10px 0 5px;
+        }
+        .numbers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+        .number {
+            width: 36px;
+            height: 36px;
+            border-radius: 18px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        .number.small {
+            background: var(--secondary-color);
+            width: 36px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:active {
+            background: var(--button-active);
+        }
+        button.secondary {
+            background: var(--keyboard-bg);
+            color: var(--text-color);
+        }
+        #fakeInput {
+            position: absolute;
+            opacity: 0;
+            height: 0;
+            width: 0;
+        }
+        #inputDisplay {
+            width: 100%;
+            min-height: 70px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 8px;
+            font-size: 15px;
+            background: var(--card-bg);
+            word-wrap: break-word;
+            color: var(--text-color);
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            font-size: 13px;
+        }
+        .stats-table th, .stats-table td {
+            padding: 6px;
+            text-align: left;
+            border-bottom: 1px solid var(--history-border);
+        }
+        .hot {
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+        .cold {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--history-border);
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item button {
+            width: auto;
+            padding: 2px 8px;
+            margin: 0;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .custom-keyboard {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--keyboard-bg);
+            padding: 8px;
+            border-top: 1px solid var(--border-color);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .keyboard-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        .keyboard-key {
+            flex: 1;
+            height: 48px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            color: var(--text-color);
+        }
+        .keyboard-key:active {
+            background: var(--history-border);
+        }
+        .keyboard-key.wide {
+            flex: 2;
+        }
+        .keyboard-key.blue {
+            background: var(--primary-color);
+            color: white;
+        }
+        .keyboard-key.red {
+            background: var(--secondary-color);
+            color: white;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle">🌓</button>
+    
+    <div class="container">
+        <div class="card">
+            <h1>Умный генератор Рапидо 2</h1>
+            <p class="subtitle">Анализирует историю и предлагает числа</p>
+        </div>
+        
+        <div class="card">
+            <h2>Сгенерировать числа</h2>
+            <p>Поле 1 (8 из 20):</p>
+            <div class="numbers" id="field1"></div>
+            <p>Поле 2 (1 из 4):</p>
+            <div class="numbers" id="field2"></div>
+            <button id="smartGenBtn">Умная генерация</button>
+            <button id="randomGenBtn" class="secondary">Случайные числа</button>
+            <button id="refreshStatsBtn" class="secondary">Обновить анализ</button>
+        </div>
+        
+        <div class="card">
+            <h2>Добавить историю</h2>
+            <div id="inputContainer" style="position:relative;">
+                <input type="text" id="fakeInput" readonly />
+                <div id="inputDisplay" onclick="showKeyboard()">Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)</div>
+            </div>
+            <button id="addHistoryBtn">Добавить</button>
+        </div>
+        
+        <div class="card">
+            <h2>Статистика чисел</h2>
+            <table class="stats-table" id="statsTable"></table>
+        </div>
+        
+        <div class="card" style="max-height: 300px; overflow-y: auto;">
+            <h2>История розыгрышей</h2>
+            <div id="historyList"></div>
+            <button id="clearHistoryBtn" class="secondary">Очистить историю</button>
+        </div>
+    </div>
+
+    <div class="custom-keyboard" id="customKeyboard">
+        <div class="keyboard-row">
+            <div class="keyboard-key">1</div>
+            <div class="keyboard-key">2</div>
+            <div class="keyboard-key">3</div>
+            <div class="keyboard-key">4</div>
+            <div class="keyboard-key">5</div>
+            <div class="keyboard-key">6</div>
+            <div class="keyboard-key">7</div>
+            <div class="keyboard-key">8</div>
+            <div class="keyboard-key">9</div>
+            <div class="keyboard-key wide red" id="keyDel">DEL</div>
+        </div>
+        <div class="keyboard-row">
+            <div class="keyboard-key wide blue" id="keyDone">ГОТОВО</div>
+        </div>
+    </div>
+
+<script>
+    // === Тема ===
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    function loadTheme() {
+        const theme = localStorage.getItem('theme');
+        if(theme === 'dark') {
+            body.classList.add('dark-mode');
+        } else {
+            body.classList.remove('dark-mode');
+        }
+    }
+    themeToggle.addEventListener('click', () => {
+        body.classList.toggle('dark-mode');
+        if(body.classList.contains('dark-mode')) {
+            localStorage.setItem('theme', 'dark');
+        } else {
+            localStorage.setItem('theme', 'light');
+        }
+    });
+    loadTheme();
+
+    // === Переменные ===
+    let history = JSON.parse(localStorage.getItem('history')) || [];
+    const historyList = document.getElementById('historyList');
+    const field1 = document.getElementById('field1');
+    const field2 = document.getElementById('field2');
+    const statsTable = document.getElementById('statsTable');
+    const inputDisplay = document.getElementById('inputDisplay');
+    const fakeInput = document.getElementById('fakeInput');
+    const customKeyboard = document.getElementById('customKeyboard');
+    let currentInputValue = '';
+
+    // === Отобразить историю ===
+    function renderHistory() {
+        historyList.innerHTML = '';
+        if(history.length === 0) {
+            historyList.innerHTML = '<p style="font-size:14px; color:gray; text-align:center;">История пуста</p>';
+            return;
+        }
+        history.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.classList.add('history-item');
+            div.innerHTML = `
+                <div>
+                    <strong>${item.date}</strong>:
+                    <span>${item.field1.join(', ')}</span> | <span class="number small">${item.field2}</span>
+                </div>
+                <button onclick="deleteHistoryItem(${idx})">✕</button>
+            `;
+            historyList.appendChild(div);
+        });
+    }
+    renderHistory();
+
+    // === Удалить элемент истории ===
+    function deleteHistoryItem(index) {
+        history.splice(index, 1);
+        saveHistory();
+        renderHistory();
+        updateStats();
+    }
+
+    // === Сохранить историю ===
+    function saveHistory() {
+        localStorage.setItem('history', JSON.stringify(history));
+    }
+
+    // === Добавить историю из ввода ===
+    document.getElementById('addHistoryBtn').addEventListener('click', () => {
+        const input = currentInputValue.trim();
+        if(!input) {
+            alert('Введите числа в формате: 1,2,3,4,5,6,7,8 | 1');
+            return;
+        }
+        const parts = input.split('|');
+        if(parts.length !== 2) {
+            alert('Неверный формат. Должно быть: 8 чисел | 1 число');
+            return;
+        }
+        const f1 = parts[0].split(',').map(x => Number(x.trim())).filter(x => !isNaN(x));
+        const f2 = Number(parts[1].trim());
+        if(f1.length !== 8 || f1.some(n => n < 1 || n > 20) || f2 < 1 || f2 > 4) {
+            alert('Проверьте правильность чисел: поле 1 (8 чисел от 1 до 20), поле 2 (1 число от 1 до 4)');
+            return;
+        }
+        history.unshift({
+            field1: f1.sort((a,b)=>a-b),
+            field2: f2,
+            date: new Date().toLocaleString()
+        });
+        saveHistory();
+        renderHistory();
+        updateStats();
+        currentInputValue = '';
+        inputDisplay.textContent = 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
+    });
+
+    // === Очистить историю ===
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+        if(confirm('Очистить всю историю?')) {
+            history = [];
+            saveHistory();
+            renderHistory();
+            updateStats();
+        }
+    });
+
+    // === Обновить статистику ===
+    document.getElementById('refreshStatsBtn').addEventListener('click', updateStats);
+
+    // === Подсчет статистики ===
+    function updateStats() {
+        const countNumbers = {};
+        history.forEach(item => {
+            item.field1.forEach(num => {
+                countNumbers[num] = (countNumbers[num] || 0) + 1;
+            });
+            // Можно добавить поле 2 для статистики при необходимости
+        });
+        // Создаем массив для таблицы
+        const rows = [];
+        for(let i = 1; i <= 20; i++) {
+            rows.push({
+                number: i,
+                count: countNumbers[i] || 0
+            });
+        }
+        rows.sort((a,b) => b.count - a.count);
+
+        // Определяем горячие и холодные
+        const maxCount = rows[0].count;
+        const minCount = rows[rows.length-1].count;
+
+        let html = `<tr><th>Число</th><th>Выпадений</th></tr>`;
+        rows.forEach(row => {
+            let className = '';
+            if(row.count === maxCount && maxCount > 0) className = 'hot';
+            if(row.count === minCount && minCount < maxCount) className = 'cold';
+            html += `<tr><td>${row.number}</td><td class="${className}">${row.count}</td></tr>`;
+        });
+        statsTable.innerHTML = html;
+    }
+    updateStats();
+
+    // === Генерация чисел ===
+    function getWeightedNumbers(numberStats, count, maxNum) {
+        const allNumbers = Array.from({length: maxNum}, (_, i) => i + 1);
+        if (Object.keys(numberStats).length === 0) {
+            if (count === 1) return Math.floor(Math.random() * maxNum) + 1;
+            const result = [];
+            while (result.length < count) {
+                const num = Math.floor(Math.random() * maxNum) + 1;
+                if (!result.includes(num)) result.push(num);
+            }
+            return result.sort((a, b) => a - b);
+        }
+        const weightedPool = [];
+        allNumbers.forEach(num => {
+            const countValue = numberStats[num] || 0;
+            const weight = countValue + 1; // +1 для шанса у редких
+            for (let i = 0; i < weight; i++) {
+                weightedPool.push(num);
+            }
+        });
+        const result = new Set();
+        while (result.size < count) {
+            const randIndex = Math.floor(Math.random() * weightedPool.length);
+            result.add(weightedPool[randIndex]);
+        }
+        const finalResult = Array.from(result).sort((a, b) => a - b);
+        return count === 1 ? finalResult[0] : finalResult;
+    }
+
+    // === Умная генерация ===
+    document.getElementById('smartGenBtn').addEventListener('click', () => {
+        const numberStats = {};
+        history.forEach(item => {
+            item.field1.forEach(num => {
+                numberStats[num] = (numberStats[num] || 0) + 1;
+            });
+        });
+        const f1 = getWeightedNumbers(numberStats, 8, 20);
+        // Для поля 2 просто случайное число от 1 до 4 (можно улучшить)
+        const f2 = getWeightedNumbers({}, 1, 4);
+
+        displayNumbers(f1, f2);
+    });
+
+    // === Случайная генерация ===
+    document.getElementById('randomGenBtn').addEventListener('click', () => {
+        const f1 = [];
+        while(f1.length < 8) {
+            const num = Math.floor(Math.random() * 20) + 1;
+            if(!f1.includes(num)) f1.push(num);
+        }
+        f1.sort((a,b) => a - b);
+        const f2 = Math.floor(Math.random() * 4) + 1;
+        displayNumbers(f1, f2);
+    });
+
+    // === Отобразить сгенерированные числа ===
+    function displayNumbers(f1, f2) {
+        field1.innerHTML = '';
+        f1.forEach(num => {
+            const span = document.createElement('span');
+            span.classList.add('number');
+            span.textContent = num;
+            field1.appendChild(span);
+        });
+        field2.innerHTML = '';
+        const span2 = document.createElement('span');
+        span2.classList.add('number', 'small');
+        span2.textContent = f2;
+        field2.appendChild(span2);
+    }
+
+    // === Виртуальная клавиатура ===
+    function showKeyboard() {
+        customKeyboard.style.display = 'flex';
+        fakeInput.focus();
+    }
+    function hideKeyboard() {
+        customKeyboard.style.display = 'none';
+    }
+
+    customKeyboard.addEventListener('click', (e) => {
+        if(!e.target.classList.contains('keyboard-key')) return;
+        const key = e.target.textContent;
+        if(key === 'DEL') {
+            currentInputValue = currentInputValue.slice(0, -1);
+        } else if(key === 'ГОТОВО') {
+            inputDisplay.textContent = currentInputValue || 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
+            hideKeyboard();
+            return;
+        } else {
+            currentInputValue += key;
+        }
+        inputDisplay.textContent = currentInputValue || 'Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)';
+    });
+
+    inputDisplay.addEventListener('click', showKeyboard);
+</script>
+</body>
+</html>
