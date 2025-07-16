@@ -464,6 +464,11 @@
         statsTable.innerHTML = html;
     }
     updateStats();
+    // Обновить анализ вручную по кнопке
+document.getElementById('refreshStatsBtn').onclick = () => {
+    updateStats();
+};
+
 
     // --- Генерация умных чисел ---
 
