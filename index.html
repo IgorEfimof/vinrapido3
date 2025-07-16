@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Рапидо Драйв</title>
     <style>
+        /* Стили остаются без изменений */
         :root {
             --bg-color: #f5f5f7;
             --text-color: #1c1c1e;
@@ -300,8 +301,8 @@
         </div>
         <div class="keyboard-row">
             <div class="keyboard-key">0</div>
-            <div class="keyboard-key">,</div> <!-- Добавлена запятая -->
-            <div class="keyboard-key">|</div> <!-- Добавлена вертикальная черта -->
+            <div class="keyboard-key">,</div>
+            <div class="keyboard-key">|</div>
             <div class="keyboard-key wide blue" id="keyDone">Готово</div>
         </div>
     </div>
@@ -482,10 +483,9 @@
             if(nums2 >= 1 && nums2 <= 4) countField2[nums2 - 1]++;
         });
 
-        // Выбираем 8 чисел из 20 по весам (более часто встречающиеся — выше шанс)
+        // Выбираем 8 чисел из 20 по весам
         let pool1 = [];
         for(let i = 0; i < 20; i++) {
-            // Добавляем число в пул столько раз, сколько его частота + 1, чтобы не исключать полностью
             const weight = countField1[i] + 1;
             for(let j=0; j < weight; j++) {
                 pool1.push(i+1);
@@ -497,12 +497,11 @@
             const idx = Math.floor(Math.random() * pool1.length);
             const num = pool1[idx];
             if(!selected1.includes(num)) selected1.push(num);
-            // Удалим все вхождения выбранного числа, чтобы не выбрать его снова
             pool1 = pool1.filter(n => n !== num);
         }
         selected1.sort((a,b) => a-b);
 
-        // Выбираем 1 число из 4 аналогично
+        // Выбираем 1 число из 4
         let pool2 = [];
         for(let i = 0; i < 4; i++) {
             const weight = countField2[i] + 1;
@@ -559,10 +558,8 @@
         field2.appendChild(div2);
     };
 
-    // --- Обновить статистику по кнопке ---
-    document.getElementById('refreshStatsBtn').onclick = updateStats;
-
+    // Инициализация статистики при загрузке
+    updateStats(); // <-- ЭТА СТРОКА ДОБАВЛЕНА ДЛЯ ИСПРАВЛЕНИЯ
 </script>
 </body>
 </html>
-
