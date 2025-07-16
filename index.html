@@ -438,7 +438,7 @@
         const countField2 = Array(4).fill(0);
 
         history.forEach(entry => {
-            const parts = entry.split(' | ');
+            const parts = entry.split(/\s*\|\s*/);
             if(parts.length !== 2) return;
             const nums1 = parts[0].split(',').map(n => parseInt(n));
             const nums2 = parseInt(parts[1]);
@@ -473,7 +473,7 @@
         const countField2 = Array(4).fill(0);
 
         history.forEach(entry => {
-            const parts = entry.split(' | ');
+            const parts = entry.split(/\s*\|\s*/);
             if(parts.length !== 2) return;
             const nums1 = parts[0].split(',').map(n => parseInt(n));
             const nums2 = parseInt(parts[1]);
