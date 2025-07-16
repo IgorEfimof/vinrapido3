@@ -262,7 +262,6 @@
             <div class="numbers" id="field2"></div>
             <button id="smartGenBtn">Умная генерация</button>
             <button id="randomGenBtn" class="secondary">Случайные числа</button>
-            <button id="refreshStatsBtn" class="secondary">Обновить анализ</button>
         </div>
         
         <div class="card">
@@ -463,13 +462,7 @@
         }
         statsTable.innerHTML = html;
     }
-    updateStats();
-    // Обновить анализ вручную по кнопке
-document.getElementById('refreshStatsBtn').onclick = () => {
-    updateStats();
-};
-
-
+    
     // --- Генерация умных чисел ---
 
     function generateSmartNumbers() {
