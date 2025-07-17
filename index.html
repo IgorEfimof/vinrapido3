@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Рапидо Драйв</title>
     <style>
-        /* Стили остаются без изменений */
+        /* Обновлённые стили */
         :root {
             --bg-color: #f5f5f7;
             --text-color: #1c1c1e;
@@ -16,6 +16,7 @@
             --keyboard-bg: #e5e5ea;
             --button-active: #004499;
             --history-border: #eee;
+            --selected-color: #34c759;
         }
 
         .dark-mode {
@@ -28,6 +29,7 @@
             --keyboard-bg: #3a3a3c;
             --button-active: #0061c8;
             --history-border: #444;
+            --selected-color: #30d158;
         }
 
         * {
@@ -100,6 +102,11 @@
             justify-content: center;
             font-weight: bold;
             font-size: 15px;
+            transition: transform 0.2s;
+        }
+        .number.selected {
+            background: var(--selected-color);
+            transform: scale(1.1);
         }
         .number.small {
             background: var(--secondary-color);
@@ -142,6 +149,10 @@
             background: var(--card-bg);
             word-wrap: break-word;
             color: var(--text-color);
+        }
+        .input-active {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0,102,204,0.2);
         }
         .stats-table {
             width: 100%;
@@ -244,6 +255,12 @@
             border: none;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
+        .validation-error {
+            color: var(--secondary-color);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -270,6 +287,7 @@
             <div id="inputContainer" style="position:relative;">
                 <input type="text" id="fakeInput" readonly />
                 <div id="inputDisplay" onclick="showKeyboard()">Коснитесь для ввода (формат: 1,2,3,4,5,6,7,8 | 1)</div>
+                <div id="validationError" class="validation-error"></div>
             </div>
             <button id="addHistoryBtn">Добавить</button>
         </div>
@@ -363,6 +381,8 @@
             saveHistory();
             renderHistory();
             updateStats();
+            // Генерация новых чисел после очистки
+            generateSmartNumbers();
         }
     };
 
@@ -374,12 +394,16 @@
     const inputDisplay = document.getElementById('inputDisplay');
     const fakeInput = document.getElementById('fakeInput');
     const customKeyboard = document.getElementById('customKeyboard');
+    const validationError = document.getElementById('validationError');
 
     function showKeyboard() {
         customKeyboard.style.display = 'flex';
+        inputDisplay.classList.add('input-active');
+        validationError.style.display = 'none';
     }
     function hideKeyboard() {
         customKeyboard.style.display = 'none';
+        inputDisplay.classList.remove('input-active');
     }
 
     // Отобразить введённый текст
@@ -409,24 +433,74 @@
 
     inputDisplay.onclick = showKeyboard;
 
+    // --- Валидация ввода ---
+    function validateInput(val) {
+        validationError.style.display = 'none';
+        
+        // Проверка формата
+        if(!/^(\d{1,2},){7}\d{1,2}\s*\|\s*\d{1,2}$/.test(val)) {
+            validationError.textContent = 'Неверный формат. Пример: 1,2,3,4,5,6,7,8 | 1';
+            validationError.style.display = 'block';
+            return false;
+        }
+        
+        const [field1, field2] = val.split(/\s*\|\s*/);
+        const nums1 = field1.split(',').map(n => parseInt(n));
+        const num2 = parseInt(field2);
+        
+        // Проверка диапазонов
+        const invalid1 = nums1.filter(n => n < 1 || n > 20);
+        if(invalid1.length > 0) {
+            validationError.textContent = `Числа в поле 1 должны быть от 1 до 20. Ошибка: ${invalid1.join(', ')}`;
+            validationError.style.display = 'block';
+            return false;
+        }
+        
+        if(num2 < 1 || num2 > 4) {
+            validationError.textContent = 'Число в поле 2 должно быть от 1 до 4';
+            validationError.style.display = 'block';
+            return false;
+        }
+        
+        // Проверка дубликатов в поле 1
+        const unique = new Set(nums1);
+        if(unique.size !== 8) {
+            validationError.textContent = 'В поле 1 не должно быть повторяющихся чисел';
+            validationError.style.display = 'block';
+            return false;
+        }
+        
+        return true;
+    }
+
     // --- Добавление в историю ---
     document.getElementById('addHistoryBtn').onclick = () => {
         const val = fakeInput.value.trim();
         if(!val) {
-            alert('Введите числа в формате: 1,2,3,4,5,6,7,8 | 1');
+            validationError.textContent = 'Введите числа в формате: 1,2,3,4,5,6,7,8 | 1';
+            validationError.style.display = 'block';
             return;
         }
-        // Валидация формата
-        if(!/^(\d{1,2},){7}\d{1,2}\s*\|\s*\d{1,2}$/.test(val)) {
-            alert('Неверный формат. Пример: 1,2,3,4,5,6,7,8 | 1');
+        
+        if(!validateInput(val)) return;
+        
+        // Проверка дубликатов в истории
+        if(history.includes(val)) {
+            validationError.textContent = 'Эта комбинация уже есть в истории';
+            validationError.style.display = 'block';
             return;
         }
+        
         history.push(val);
         saveHistory();
         renderHistory();
         updateStats();
         fakeInput.value = '';
         updateInputDisplay();
+        hideKeyboard();
+        
+        // Обновляем генерацию после добавления
+        generateSmartNumbers();
     };
 
     // --- Статистика ---
@@ -464,8 +538,7 @@
         statsTable.innerHTML = html;
     }
     
-    // --- Генерация умных чисел ---
-
+    // --- Генерация умных чисел (холодные числа) ---
     function generateSmartNumbers() {
         // Получаем статистику для первого и второго поля
         const countField1 = Array(20).fill(0);
@@ -483,12 +556,21 @@
             if(nums2 >= 1 && nums2 <= 4) countField2[nums2 - 1]++;
         });
 
-        // Выбираем 8 чисел из 20 по весам
+        // Для пустой истории используем случайную генерацию
+        if(history.length === 0) {
+            generateRandomNumbers();
+            return;
+        }
+
+        // Выбираем 8 чисел из 20 по весам (холодные числа имеют больший вес)
         let pool1 = [];
+        const maxCount1 = Math.max(...countField1);
+        
         for(let i = 0; i < 20; i++) {
-            const weight = countField1[i] + 1;
-            for(let j=0; j < weight; j++) {
-                pool1.push(i+1);
+            // Инвертируем веса: чем реже выпадало число, тем больше его вес
+            const weight = maxCount1 - countField1[i] + 1;
+            for(let j = 0; j < weight; j++) {
+                pool1.push(i + 1);
             }
         }
 
@@ -497,50 +579,58 @@
             const idx = Math.floor(Math.random() * pool1.length);
             const num = pool1[idx];
             if(!selected1.includes(num)) selected1.push(num);
+            // Удаляем все вхождения этого числа, чтобы избежать повторного выбора
             pool1 = pool1.filter(n => n !== num);
         }
-        selected1.sort((a,b) => a-b);
-
-        // Выбираем 1 число из 4
-        let pool2 = [];
-        for(let i = 0; i < 4; i++) {
-            const weight = countField2[i] + 1;
-            for(let j=0; j < weight; j++) {
-                pool2.push(i+1);
+        
+        // Если не удалось выбрать 8 чисел, добираем случайными
+        if(selected1.length < 8) {
+            const needed = 8 - selected1.length;
+            const availableNumbers = Array.from({length: 20}, (_, i) => i + 1)
+                .filter(n => !selected1.includes(n));
+            
+            for(let i = 0; i < needed && availableNumbers.length > 0; i++) {
+                const randomIdx = Math.floor(Math.random() * availableNumbers.length);
+                selected1.push(availableNumbers[randomIdx]);
+                availableNumbers.splice(randomIdx, 1);
             }
         }
-        let selected2 = pool2.length > 0 ? pool2[Math.floor(Math.random() * pool2.length)] : Math.floor(Math.random() * 4) + 1;
+        selected1.sort((a, b) => a - b);
 
-        // Отобразим
-        const field1 = document.getElementById('field1');
-        const field2 = document.getElementById('field2');
-        field1.innerHTML = '';
-        field2.innerHTML = '';
+        // Выбираем 1 число из 4 для второго поля
+        let pool2 = [];
+        const maxCount2 = Math.max(...countField2);
+        
+        for(let i = 0; i < 4; i++) {
+            const weight = maxCount2 - countField2[i] + 1;
+            for(let j = 0; j < weight; j++) {
+                pool2.push(i + 1);
+            }
+        }
+        
+        let selected2 = pool2.length > 0 
+            ? pool2[Math.floor(Math.random() * pool2.length)] 
+            : Math.floor(Math.random() * 4) + 1;
 
-        selected1.forEach(n => {
-            const div = document.createElement('div');
-            div.className = 'number';
-            div.textContent = n;
-            field1.appendChild(div);
-        });
-        const div2 = document.createElement('div');
-        div2.className = 'number small';
-        div2.textContent = selected2;
-        field2.appendChild(div2);
+        // Отображаем результат
+        displayNumbers(selected1, selected2);
     }
 
-    document.getElementById('smartGenBtn').onclick = generateSmartNumbers;
-
     // --- Генерация случайных чисел ---
-    document.getElementById('randomGenBtn').onclick = () => {
+    function generateRandomNumbers() {
         const nums1 = [];
         while(nums1.length < 8) {
             const n = Math.floor(Math.random() * 20) + 1;
             if(!nums1.includes(n)) nums1.push(n);
         }
-        nums1.sort((a,b) => a-b);
+        nums1.sort((a, b) => a - b);
         const n2 = Math.floor(Math.random() * 4) + 1;
+        
+        displayNumbers(nums1, n2);
+    }
 
+    // --- Отображение сгенерированных чисел ---
+    function displayNumbers(nums1, num2) {
         const field1 = document.getElementById('field1');
         const field2 = document.getElementById('field2');
         field1.innerHTML = '';
@@ -552,14 +642,28 @@
             div.textContent = n;
             field1.appendChild(div);
         });
+        
         const div2 = document.createElement('div');
         div2.className = 'number small';
-        div2.textContent = n2;
+        div2.textContent = num2;
         field2.appendChild(div2);
-    };
+        
+        // Анимация выбора
+        setTimeout(() => {
+            field1.querySelectorAll('.number').forEach(el => {
+                el.classList.add('selected');
+            });
+            div2.classList.add('selected');
+        }, 100);
+    }
 
-    // Инициализация статистики при загрузке
-    updateStats(); // <-- ЭТА СТРОКА ДОБАВЛЕНА ДЛЯ ИСПРАВЛЕНИЯ
+    // --- Инициализация кнопок ---
+    document.getElementById('smartGenBtn').onclick = generateSmartNumbers;
+    document.getElementById('randomGenBtn').onclick = generateRandomNumbers;
+
+    // Инициализация при загрузке
+    updateStats();
+    generateSmartNumbers();
 </script>
 </body>
 </html>
