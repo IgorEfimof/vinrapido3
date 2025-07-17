@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Рапидо Драйв</title>
+    <title>Рапидо Драйв PRO</title>
     <style>
         /* Обновлённые стили */
         :root {
@@ -17,6 +17,7 @@
             --button-active: #004499;
             --history-border: #eee;
             --selected-color: #34c759;
+            --special-color: #af52de;
         }
 
         .dark-mode {
@@ -30,6 +31,7 @@
             --button-active: #0061c8;
             --history-border: #444;
             --selected-color: #30d158;
+            --special-color: #bf5af2;
         }
 
         * {
@@ -53,7 +55,7 @@
             max-width: 100%;
             width: 100%;
             margin: 0 auto;
-            padding-bottom: 220px;
+            padding-bottom: 280px;
         }
         h1 {
             font-size: 1.5rem;
@@ -111,6 +113,9 @@
         .number.small {
             background: var(--secondary-color);
             width: 36px;
+        }
+        .number.special {
+            background: var(--special-color);
         }
         button {
             width: 100%;
@@ -261,6 +266,37 @@
             margin-top: 5px;
             display: none;
         }
+        .method-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .method-btn {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            background: var(--keyboard-bg);
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .method-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        .info-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            background: var(--primary-color);
+            color: white;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            margin-left: 5px;
+            cursor: help;
+        }
     </style>
 </head>
 <body>
@@ -268,18 +304,23 @@
     
     <div class="container">
         <div class="card">
-            <h1>Рапидо Драйв</h1>
-            <p class="subtitle">Анализирует историю и предлагает числа</p>
+            <h1>Рапидо Драйв PRO</h1>
+            <p class="subtitle">Анализ с методами Огнева и Карнауха</p>
         </div>
         
         <div class="card">
             <h2>Сгенерировать числа</h2>
+            <div class="method-selector">
+                <div class="method-btn active" data-method="cold">Холодные</div>
+                <div class="method-btn" data-method="ogneva">Огнева<span class="info-icon" title="Характеристическое число">?</span></div>
+                <div class="method-btn" data-method="karnaugh">Карнауха<span class="info-icon" title="Метод математика П.В. Карнауха">?</span></div>
+                <div class="method-btn" data-method="random">Случайные</div>
+            </div>
             <p>Поле 1 (8 из 20):</p>
             <div class="numbers" id="field1"></div>
             <p>Поле 2 (1 из 4):</p>
             <div class="numbers" id="field2"></div>
-            <button id="smartGenBtn">Умная генерация</button>
-            <button id="randomGenBtn" class="secondary">Случайные числа</button>
+            <button id="genBtn">Сгенерировать</button>
         </div>
         
         <div class="card">
@@ -381,8 +422,7 @@
             saveHistory();
             renderHistory();
             updateStats();
-            // Генерация новых чисел после очистки
-            generateSmartNumbers();
+            generateNumbers();
         }
     };
 
@@ -500,7 +540,7 @@
         hideKeyboard();
         
         // Обновляем генерацию после добавления
-        generateSmartNumbers();
+        generateNumbers();
     };
 
     // --- Статистика ---
@@ -538,9 +578,41 @@
         statsTable.innerHTML = html;
     }
     
-    // --- Генерация умных чисел (холодные числа) ---
-    function generateSmartNumbers() {
-        // Получаем статистику для первого и второго поля
+    // --- Методы генерации ---
+    let currentMethod = 'cold';
+    
+    // Переключение методов
+    document.querySelectorAll('.method-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMethod = btn.dataset.method;
+            generateNumbers();
+        });
+    });
+    
+    // Основная функция генерации
+    function generateNumbers() {
+        switch(currentMethod) {
+            case 'cold':
+                generateColdNumbers();
+                break;
+            case 'ogneva':
+                generateOgnevaNumbers();
+                break;
+            case 'karnaugh':
+                generateKarnaughNumbers();
+                break;
+            case 'random':
+                generateRandomNumbers();
+                break;
+            default:
+                generateColdNumbers();
+        }
+    }
+    
+    // Метод холодных чисел
+    function generateColdNumbers() {
         const countField1 = Array(20).fill(0);
         const countField2 = Array(4).fill(0);
 
@@ -556,67 +628,113 @@
             if(nums2 >= 1 && nums2 <= 4) countField2[nums2 - 1]++;
         });
 
-        // Для пустой истории используем случайную генерацию
         if(history.length === 0) {
             generateRandomNumbers();
             return;
         }
 
-        // Выбираем 8 чисел из 20 по весам (холодные числа имеют больший вес)
-        let pool1 = [];
-        const maxCount1 = Math.max(...countField1);
-        
-        for(let i = 0; i < 20; i++) {
-            // Инвертируем веса: чем реже выпадало число, тем больше его вес
-            const weight = maxCount1 - countField1[i] + 1;
-            for(let j = 0; j < weight; j++) {
-                pool1.push(i + 1);
-            }
-        }
+        // Выбираем 8 самых редких чисел для первого поля
+        let numbers1 = Array.from({ length: 20 }, (_, i) => i + 1);
+        numbers1.sort((a, b) => countField1[a - 1] - countField1[b - 1]);
+        const selected1 = numbers1.slice(0, 8).sort((a, b) => a - b);
 
-        let selected1 = [];
-        while(selected1.length < 8 && pool1.length > 0) {
-            const idx = Math.floor(Math.random() * pool1.length);
-            const num = pool1[idx];
-            if(!selected1.includes(num)) selected1.push(num);
-            // Удаляем все вхождения этого числа, чтобы избежать повторного выбора
-            pool1 = pool1.filter(n => n !== num);
-        }
-        
-        // Если не удалось выбрать 8 чисел, добираем случайными
-        if(selected1.length < 8) {
-            const needed = 8 - selected1.length;
-            const availableNumbers = Array.from({length: 20}, (_, i) => i + 1)
-                .filter(n => !selected1.includes(n));
-            
-            for(let i = 0; i < needed && availableNumbers.length > 0; i++) {
-                const randomIdx = Math.floor(Math.random() * availableNumbers.length);
-                selected1.push(availableNumbers[randomIdx]);
-                availableNumbers.splice(randomIdx, 1);
-            }
-        }
-        selected1.sort((a, b) => a - b);
+        // Для второго поля выбираем самое редкое число
+        let numbers2 = Array.from({ length: 4 }, (_, i) => i + 1);
+        numbers2.sort((a, b) => countField2[a - 1] - countField2[b - 1]);
+        const selected2 = numbers2[0];
 
-        // Выбираем 1 число из 4 для второго поля
-        let pool2 = [];
-        const maxCount2 = Math.max(...countField2);
-        
-        for(let i = 0; i < 4; i++) {
-            const weight = maxCount2 - countField2[i] + 1;
-            for(let j = 0; j < weight; j++) {
-                pool2.push(i + 1);
-            }
-        }
-        
-        let selected2 = pool2.length > 0 
-            ? pool2[Math.floor(Math.random() * pool2.length)] 
-            : Math.floor(Math.random() * 4) + 1;
-
-        // Отображаем результат
-        displayNumbers(selected1, selected2);
+        displayNumbers(selected1, selected2, 'cold');
     }
+    
+    // Метод Огнева (характеристическое число)
+    function generateOgnevaNumbers() {
+        if(history.length < 5) {
+            generateColdNumbers();
+            return;
+        }
+        
+        // Рассчитываем среднее характеристическое число
+        let totalOgneva = 0;
+        history.forEach(entry => {
+            const parts = entry.split(/\s*\|\s*/);
+            if(parts.length !== 2) return;
+            const nums1 = parts[0].split(',').map(Number);
+            const num2 = parseInt(parts[1]);
+            const sum1 = nums1.reduce((a, b) => a + b, 0);
+            totalOgneva += sum1 * num2;
+        });
+        const avgOgneva = totalOgneva / history.length;
+        
+        // Генерируем комбинации и выбираем лучшую
+        let bestCombination = null;
+        let bestDiff = Infinity;
+        
+        for(let i = 0; i < 50; i++) {
+            const nums1 = [];
+            while(nums1.length < 8) {
+                const n = Math.floor(Math.random() * 20) + 1;
+                if(!nums1.includes(n)) nums1.push(n);
+            }
+            nums1.sort((a, b) => a - b);
+            const num2 = Math.floor(Math.random() * 4) + 1;
+            
+            const sum1 = nums1.reduce((a, b) => a + b, 0);
+            const ogneva = sum1 * num2;
+            const diff = Math.abs(ogneva - avgOgneva);
+            
+            if(diff < bestDiff) {
+                bestDiff = diff;
+                bestCombination = { nums1, num2 };
+            }
+        }
+        
+        if(bestCombination) {
+            displayNumbers(bestCombination.nums1, bestCombination.num2, 'ogneva');
+        } else {
+            generateRandomNumbers();
+        }
+    }
+    
+    // Метод Карнауха (комбинация холодных и горячих чисел)
+    function generateKarnaughNumbers() {
+        const countField1 = Array(20).fill(0);
+        const countField2 = Array(4).fill(0);
 
-    // --- Генерация случайных чисел ---
+        history.forEach(entry => {
+            const parts = entry.split(/\s*\|\s*/);
+            if(parts.length !== 2) return;
+            const nums1 = parts[0].split(',').map(n => parseInt(n));
+            const nums2 = parseInt(parts[1]);
+
+            nums1.forEach(n => {
+                if(n >= 1 && n <= 20) countField1[n - 1]++;
+            });
+            if(nums2 >= 1 && nums2 <= 4) countField2[nums2 - 1]++;
+        });
+
+        if(history.length < 10) {
+            generateColdNumbers();
+            return;
+        }
+        
+        // Сортируем числа по частоте выпадения
+        let numbers1 = Array.from({ length: 20 }, (_, i) => i + 1);
+        numbers1.sort((a, b) => countField1[a - 1] - countField1[b - 1]);
+        
+        // Выбираем 5 холодных и 3 горячих числа
+        const coldNumbers = numbers1.slice(0, 5);
+        const hotNumbers = numbers1.slice(-3).reverse();
+        const selected1 = [...coldNumbers, ...hotNumbers].sort((a, b) => a - b);
+        
+        // Для второго поля выбираем среднее по частоте
+        let numbers2 = Array.from({ length: 4 }, (_, i) => i + 1);
+        numbers2.sort((a, b) => countField2[a - 1] - countField2[b - 1]);
+        const selected2 = numbers2[1] || numbers2[0]; // берем второе по холодности
+        
+        displayNumbers(selected1, selected2, 'karnaugh');
+    }
+    
+    // Случайная генерация
     function generateRandomNumbers() {
         const nums1 = [];
         while(nums1.length < 8) {
@@ -626,11 +744,11 @@
         nums1.sort((a, b) => a - b);
         const n2 = Math.floor(Math.random() * 4) + 1;
         
-        displayNumbers(nums1, n2);
+        displayNumbers(nums1, n2, 'random');
     }
-
-    // --- Отображение сгенерированных чисел ---
-    function displayNumbers(nums1, num2) {
+    
+    // Отображение сгенерированных чисел
+    function displayNumbers(nums1, num2, method = 'cold') {
         const field1 = document.getElementById('field1');
         const field2 = document.getElementById('field2');
         field1.innerHTML = '';
@@ -639,12 +757,18 @@
         nums1.forEach(n => {
             const div = document.createElement('div');
             div.className = 'number';
+            if(method === 'karnaugh' && nums1.indexOf(n) < 5) {
+                div.classList.add('special');
+            }
             div.textContent = n;
             field1.appendChild(div);
         });
         
         const div2 = document.createElement('div');
         div2.className = 'number small';
+        if(method === 'ogneva') {
+            div2.classList.add('special');
+        }
         div2.textContent = num2;
         field2.appendChild(div2);
         
@@ -657,13 +781,10 @@
         }, 100);
     }
 
-    // --- Инициализация кнопок ---
-    document.getElementById('smartGenBtn').onclick = generateSmartNumbers;
-    document.getElementById('randomGenBtn').onclick = generateRandomNumbers;
-
-    // Инициализация при загрузке
+    // --- Инициализация при загрузке ---
+    document.getElementById('genBtn').onclick = generateNumbers;
     updateStats();
-    generateSmartNumbers();
+    generateNumbers();
 </script>
 </body>
 </html>
